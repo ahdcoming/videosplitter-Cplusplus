@@ -1,10 +1,16 @@
 #include "in_video.h"
+#include <string>
+#include <iostream>
+extern "C" {
+#include <libavformat/avformat.h>
+}
 
+
+/* Print detailed information about the input or output format, 
+   such as duration, bitrate, streams, container, programs, metadata, side data, 
+   codec and time base. 
+*/
 std::ostream &operator<<(std::ostream &stream, in_video *video){
-  /* Print detailed information about the input or output format, 
-     such as duration, bitrate, streams, container, programs, metadata, side data, 
-     codec and time base. 
-  */
 
   avformat_find_stream_info(video->av_format_context, 0);
   av_dump_format(video->av_format_context, video->stream_id, "", 0);

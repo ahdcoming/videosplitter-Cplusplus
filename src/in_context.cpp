@@ -1,4 +1,6 @@
 #include "in_context.h"
+#include "in_audio.h"
+#include "in_video.h"
 
 /*Constructor
 */
@@ -14,14 +16,16 @@ int in_context::open(std::string filename){
   int ret = 0;
 
   //Open video stream
-  if(ret = this->video->open(filename)){
-    this->setLastErrorMessage(this->video->getLastErrorMessage());
+  ret = this->video->open(filename);
+  if(ret){
+    this->setErrorMessage(this->video->getLastErrorMessage());
     return 1;
   }
 
   //Open audio stream
-  if(ret = this->audio->open(filename)){
-    this->setLastErrorMessage(this->audio->getLastErrorMessage());
+  ret = this->audio->open(filename);
+  if(ret){
+    this->setErrorMessage(this->audio->getLastErrorMessage());
     return 1;
   }
 
@@ -29,6 +33,13 @@ int in_context::open(std::string filename){
 }
 
 std::ostream &operator<<(std::ostream &stream, in_context my_ctx){
+
+  std::cout << "-------------" << std::endl;
+  std::cout << "Input Context: " << my_ctx.getFileName() << std::endl;
+  std::cout << "-------------" << std::endl;
+
   std::cout << my_ctx.video;
   std::cout << my_ctx.audio;
+
+  return stream;
 }

@@ -1,4 +1,10 @@
 #include "in_audio.h"
+#include <string>
+#include <iostream>
+extern "C" {
+#include <libavformat/avformat.h>
+}
+
 
 std::ostream &operator<<(std::ostream &stream, in_audio *audio){
   /* Print detailed information about the input or output format, 
@@ -8,7 +14,6 @@ std::ostream &operator<<(std::ostream &stream, in_audio *audio){
 
   std::cout << "-------------------------" << std::endl;
   std::cout << "Stream " << av_get_media_type_string(audio->type) << " Id :" << audio->stream_id << std::endl;
-  AVCodecContext *input_codec_ctx =   audio->av_format_context->streams[audio->stream_id]->codec;
   
   return stream;
 }

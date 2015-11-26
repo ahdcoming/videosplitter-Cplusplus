@@ -21,8 +21,9 @@ class in_stream{
   int close();
 
   /* get and set error messages for external use */
+  std::string getErrorMessage(){ return this->errorMessage;};
   std::string getLastErrorMessage(){ return this->errorMessage;};
-  void setLastErrorMessage(std::string error){ this->errorMessage = error ;};
+  void setErrorMessage(std::string error){ this->errorMessage = error ;};
 
   friend std::ostream &operator<<(std::ostream &stream, in_stream* o);
   

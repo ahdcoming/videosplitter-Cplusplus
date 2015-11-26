@@ -1,14 +1,7 @@
 #ifndef IN_VIDEO_STREAM_H
 #define IN_VIDEO_STREAM_H
 
-#include <string>
-#include <iostream>
-
 #include "in_stream.h"
-
-extern "C" {
-#include <libavformat/avformat.h>
-}
 
 class in_video: public in_stream{
  public:

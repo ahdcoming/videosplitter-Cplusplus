@@ -76,7 +76,7 @@ int in_stream::open_codec_context(){
   // Now pFormatCtx->streams is just an array of pointers, 
   // of size pFormatCtx->nb_streams, so let's walk through it until we find a suitable (audio or video) stream.
 
-  int i;
+  unsigned int i;
   AVStream       *input_st;
   AVCodecContext *input_decoder_ctx = NULL;
   AVCodec        *input_decoder     = NULL;
@@ -130,12 +130,12 @@ void in_stream::setErrorMessage(int_stream_error_code code, std::string payload)
   case CANT_OPEN_CODEC:
     errorMessage = "Filed to open codec: ";
     errorMessage.append(av_get_media_type_string(this->type));
-    this->setLastErrorMessage(errorMessage);
+    this->setErrorMessage(errorMessage);
     break;
   case CANT_OPEN_INPUT_FILE:
     errorMessage = "Could not open input file: " ;
     errorMessage.append(payload);
-    this->setLastErrorMessage(errorMessage);
+    this->setErrorMessage(errorMessage);
     break;
   };
 }

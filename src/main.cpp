@@ -1,8 +1,15 @@
 #include "main.h"
-#include "in_context.h"
 
 #include <iostream>
 #include <string>
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+}
+
+#include "in_context.h"
+#include "out_context.h"
+
 
 #if DEBUG == 1
 #include <stdlib.h>
@@ -11,8 +18,10 @@ void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs) { pri
 
 int main(int argc, char *argv[]){
 
-  std::string filename;
-  std::string prefix;
+  std::string inputFile;
+  std::string outputPrefix;
+  std::string outputFile;
+  int outputCounter = 0;
 
   //Let's parse the commandline
  
@@ -22,22 +31,35 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-  filename = argv[1];
-  prefix   = argv[2];
-  std::cout << "\nTarget file: \"" << filename << "\" using prefix: \"" << prefix << "\" " <<  std::endl;
+  inputFile = argv[1];
+  outputPrefix   = argv[2];
+  std::cout << "\nTarget file: \"" << inputFile << "\" using outputPrefix: \"" << outputPrefix << "\" " <<  std::endl;
 
   av_register_all();
 
-  in_context   inputStream;
+  in_context   inputContext;
   //open input streams, audio and video
   int err;
-  if(err = inputStream.open(filename)){
-    std::cout << "Error: " << err << " - " << inputStream.getLastErrorMessage() << std::endl;
+  err = inputContext.open(inputFile);
+  if(err){
+    std::cout << "Error: " << err << " - " << inputContext.getLastErrorMessage() << std::endl;
     return 1;
   }
 
- 
-  std::cout << inputStream;
+  std::cout << inputContext;
+
+  out_context   outputContext;
+  outputFile = outputPrefix;
+  outputFile.append(outputCounter + ".wmv");
+
+  //open input streams, audio and video
+  err = outputContext.open(outputFile);
+  if(err){
+    std::cout << "Error: " << err << " - " << outputContext.getLastErrorMessage() << std::endl;
+    return 1;
+  }
+
+  std::cout << outputContext;
 
 #if DEBUG == 1
  av_log_set_level(AV_LOG_DEBUG);
