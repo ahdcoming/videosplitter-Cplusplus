@@ -2,44 +2,17 @@
 #define OUT_CONTEXT_H
 
 #define OUTPUT_FORMAT     ".wmv" 
-#define VIDEO_OUT_CODEC_ID    AV_CODEC_ID_WMV2 
-#define VIDEO_OUT_WIDTH   320
-#define VIDEO_OUT_HEIGHT  240
-#define VIDEO_OUT_BITRATE 7500000
-#define VIDEO_OUT_PIX_FMT AV_PIX_FMT_YUV420P
-#define VIDEO_OUT_FRAMERATE_NUM 25
-#define VIDEO_OUT_FRAMERATE_DEN 1
-
-#define AUDIO_VIDEO_MAX_DELAY 1
-
-#define AUDIO_OUT_CODEC_ID    AV_CODEC_ID_WMAV2
-#define AUDIO_OUT_SAMPLE_FMT  AV_SAMPLE_FMT_FLTP
-#define AUDIO_OUT_CHANNELS    2
-
-/*Audio Sample Rate - Bit Rate and samples per frame are strongly related
-  You can't choose them as freely as you wish - TODO: explain and adapt these numbers
-  The values choosen are meant to avoid extra buffering during the audio conversion
-*/
-
-#define AUDIO_OUT_BITRATE     128000
-#define AUDIO_OUT_SAMPLE_RATE 48000
-#define AUDIO_OUT_SAMPLES_PER_FRAME 1000
-
-//This works, but I don't know why.
-#define MAGIC_NUMBER_ALPHA 2
-
-#define DEBUG 1
-
-#define INTERLEAVED 1
-
 
 #include <string>
 #include <iostream>
 
 extern "C"{
-  #include <libavutil/avutil.h>
-  #include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
 }
+
+class out_stream;
 
 class out_context{
  public:
@@ -79,6 +52,8 @@ class out_context{
   // The container for the audio video output streams
   AVFormatContext *av_format_context;
 
+  out_stream *audio;
+  out_stream *video;
 
 };
 

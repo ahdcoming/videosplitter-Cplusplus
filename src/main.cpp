@@ -1,4 +1,5 @@
 #include "main.h"
+#include "common.h"
 
 #include <iostream>
 #include <string>
@@ -9,7 +10,6 @@ extern "C" {
 
 #include "in_context.h"
 #include "out_context.h"
-
 
 #if DEBUG == 1
 #include <stdlib.h>
@@ -72,4 +72,3 @@ int main(int argc, char *argv[]){
 
   return 0;
 }
-

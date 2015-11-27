@@ -1,9 +1,14 @@
 #include "out_context.h"
-
+#include "out_stream_wmav2.h"
+#include "out_stream_wmv2.h"
 
 out_context::out_context(){
   this->is_open              = 0;
   this->video_frames_skipped = 0;
+
+  this->video = NULL;
+  this->audio = NULL;
+
 }
 
 out_context::~out_context(){
@@ -43,9 +48,9 @@ int out_context::open(std::string filename){
     return 1;
   }
 
-  
-
-  //  int ret = 0;
+  //we need the output audio and video codec
+  this->video = new out_stream_wmv2;
+  this->audio = new out_stream_wmav2;
 
   is_open = 1;
 
@@ -58,7 +63,19 @@ int out_context::close(){
     return 0;
   }
 
+  //write the tail of the file
   av_write_trailer(this->av_format_context);
+
+  delete(this->video);
+  delete(this->audio);
+
+  if (!(this->av_format_context->oformat->flags & AVFMT_NOFILE)) {
+
+    /* close the output file */
+    avio_flush(this->av_format_context->pb);
+    avio_close(this->av_format_context->pb);
+  }
+
   /* free the stream */
   av_free(this->av_format_context);
 

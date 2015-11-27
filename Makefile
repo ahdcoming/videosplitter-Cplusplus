@@ -22,7 +22,7 @@ LDFLAGS = -g -Wall
 CFLAGS = -g -c -Wall  ${INCLUDES} -D__STDC_CONSTANT_MACROS
 
 
-OBJS      = ${OBJDIR}/main.o ${OBJDIR}/in_context.o ${OBJDIR}/out_context.o ${OBJDIR}/in_audio.o ${OBJDIR}/in_video.o ${OBJDIR}/in_stream.o
+OBJS      = ${OBJDIR}/main.o ${OBJDIR}/in_context.o ${OBJDIR}/out_context.o ${OBJDIR}/in_audio.o ${OBJDIR}/in_video.o ${OBJDIR}/in_stream.o ${OBJDIR}/out_stream.o  ${OBJDIR}/out_stream_wmv2.o ${OBJDIR}/out_stream_wmav2.o
 
 
 # typing 'make' will invoke the first target entry in the file 
@@ -47,6 +47,16 @@ ${OBJDIR}/in_audio.o:  ${SRCDIR}/in_audio.cpp ${INCDIR}/in_audio.h
 
 ${OBJDIR}/in_context.o: ${SRCDIR}/in_context.cpp ${INCDIR}/in_context.h
 		${CC} ${CFLAGS} -o ${OBJDIR}/in_context.o ${SRCDIR}/in_context.cpp 
+
+${OBJDIR}/out_stream.o: ${SRCDIR}/out_stream.cpp ${INCDIR}/out_stream.h
+		${CC} ${CFLAGS} -o ${OBJDIR}/out_stream.o ${SRCDIR}/out_stream.cpp 
+
+${OBJDIR}/out_stream_wmv2.o: ${INCDIR}/out_stream_wmv2.h
+		${CC} ${CFLAGS} -o ${OBJDIR}/out_stream_wmv2.o ${SRCDIR}/out_stream_wmv2.cpp
+
+${OBJDIR}/out_stream_wmav2.o: ${INCDIR}/out_stream_wmav2.h
+		${CC} ${CFLAGS} -o ${OBJDIR}/out_stream_wmav2.o ${SRCDIR}/out_stream_wmav2.cpp
+
 
 ${OBJDIR}/out_context.o: ${SRCDIR}/out_context.cpp ${INCDIR}/out_context.h
 		${CC} ${CFLAGS} -o ${OBJDIR}/out_context.o ${SRCDIR}/out_context.cpp 
