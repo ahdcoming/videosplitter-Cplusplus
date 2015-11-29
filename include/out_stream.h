@@ -22,6 +22,9 @@ class out_stream{
 
   int open(AVOutputFormat *av_format_context);
 
+  friend std::ostream &operator<<(std::ostream &stream, out_stream o);
+
+
  protected:
   void setErrorMessage(std::string error){ this->errorMessage = error ;};
   AVStream      *stream;  

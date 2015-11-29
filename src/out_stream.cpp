@@ -1,6 +1,7 @@
 #include "common.h"
 #include "out_stream.h"
 
+#include <iostream>
 
 out_stream::out_stream(enum AVCodecID Id){
   this->codecId = Id;
@@ -31,7 +32,8 @@ int out_stream::open(AVFormatContext *av_format_context){
     this->setErrorMessage(errorMessage);
     return 1;
   }
-  
+
+
   //create a new video stream
   /*We keep a direct pointer to the video stream, but you can still access
     it through the output_struct->av_format_context->streams structure */
@@ -42,14 +44,17 @@ int out_stream::open(AVFormatContext *av_format_context){
     this->setErrorMessage(errorMessage);
     return 1;
   }
-  
+
   result = this->setup_codec();
   if (!result) {
     errorMessage = "Could not setup codec";
     this->setErrorMessage(errorMessage);
     return 1;
   }
-  
+
+  //Populate the video stream video codec_context with our options
+  codec_ctx  = this->stream->codec;
+ 
   //some formats - like wmv - require a global header
   if (av_format_context->oformat->flags & AVFMT_GLOBALHEADER){
     codec_ctx->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -85,3 +90,9 @@ int out_stream::setup_codec(){
   return 0;
 }
 
+std::ostream &operator<<(std::ostream &stream, out_stream my_stream){
+
+  stream << "Codec: " << my_stream.codecId << std::endl;
+
+  return stream;
+}

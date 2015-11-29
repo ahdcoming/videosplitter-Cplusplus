@@ -12,8 +12,8 @@ std::ostream &operator<<(std::ostream &stream, in_audio *audio){
      codec and time base. 
   */
 
-  std::cout << "-------------------------" << std::endl;
-  std::cout << "Stream " << av_get_media_type_string(audio->type) << " Id :" << audio->stream_id << std::endl;
+  stream << "-------------------------" << std::endl;
+  stream << "Stream " << av_get_media_type_string(audio->type) << " Id :" << audio->stream_id << std::endl;
   
   return stream;
 }

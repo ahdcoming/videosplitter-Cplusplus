@@ -61,8 +61,8 @@ std::ostream &operator<<(std::ostream &stream, in_stream *my_stream){
   avformat_find_stream_info(my_stream->av_format_context, 0);
   av_dump_format(my_stream->av_format_context, my_stream->stream_id, "", 0);
 
-  std::cout << "-------------------------" << std::endl;
-  std::cout << "Stream " << av_get_media_type_string(my_stream->type) << " Id :" << my_stream->stream_id << std::endl;
+  stream << "-------------------------" << std::endl;
+  stream << "Stream " << av_get_media_type_string(my_stream->type) << " Id :" << my_stream->stream_id << std::endl;
 
   return stream;
 }

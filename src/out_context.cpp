@@ -19,9 +19,15 @@ out_context::~out_context(){
 
 std::ostream &operator<<(std::ostream &stream, out_context my_ctx){
 
-  std::cout << "-------------" << std::endl;
-  std::cout << "Output Context: " << my_ctx.getFileName() << std::endl;
-  std::cout << "--------------" << std::endl;
+  stream << "-------------" << std::endl;
+  stream << "Output Context: " << my_ctx.getFileName() << std::endl;
+  stream << "--------------" << std::endl;
+  stream << "Audio" << std::endl;
+  stream << *my_ctx.audio << std::endl;
+
+  stream << "--------------" << std::endl;
+  stream << "Video" << std::endl;
+  stream << *my_ctx.video << std::endl;  
 
   return stream;
 }
@@ -51,6 +57,27 @@ int out_context::open(std::string filename){
   //we need the output audio and video codec
   this->video = new out_stream_wmv2;
   this->audio = new out_stream_wmav2;
+
+  this->video->open(this->av_format_context);
+  this->audio->open(this->av_format_context);
+
+
+  /* open the output file, if needed */
+  if (!(av_format_context->flags & AVFMT_NOFILE)) {
+    if (avio_open(&av_format_context->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
+      std::string error("Could not open output file");
+      this->setErrorMessage(error);
+      return 1;
+    }
+  }
+  
+  
+  /* write the stream header, if any */
+  avformat_write_header(av_format_context ,NULL);
+
+  std::cout <<  "\nOpened output file: " << filename << std::endl ;
+
+
 
   is_open = 1;
 
