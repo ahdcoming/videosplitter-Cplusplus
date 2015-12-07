@@ -2,16 +2,17 @@
 #define COMMON_H
 
 #define DEBUG 1
+#define AUDIO_VIDEO_MAX_DELAY 1
+#define INTERLEAVED   1 
 
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
 #include <libavutil/audio_fifo.h>
-#include <libswscale/swscale.h> 
+#include <libavutil/avutil.h>
+#include <libavutil/opt.h>
 #include <libswresample/swresample.h> 
+#include <libswscale/swscale.h> 
 }
 
 class common{

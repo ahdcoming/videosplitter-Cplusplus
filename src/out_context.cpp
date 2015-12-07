@@ -4,7 +4,6 @@
 
 out_context::out_context(){
   this->is_open              = 0;
-  this->video_frames_skipped = 0;
 
   this->video = NULL;
   this->audio = NULL;
@@ -58,8 +57,19 @@ int out_context::open(std::string filename){
   this->video = new out_stream_wmv2;
   this->audio = new out_stream_wmav2;
 
-  this->video->open(this->av_format_context);
-  this->audio->open(this->av_format_context);
+  int ret;
+  ret = this->video->open(this->av_format_context);
+  if(ret){
+    this->setErrorMessage(this->video->getLastErrorMessage());
+    return 1;
+  }
+
+  ret = this->audio->open(this->av_format_context);
+  if(ret){
+    this->setErrorMessage(this->audio->getLastErrorMessage());
+    return 1;
+  }
+ 
 
 
   /* open the output file, if needed */

@@ -1,4 +1,5 @@
 #include "in_context.h"
+#include "in_stream.h"
 #include "in_audio.h"
 #include "in_video.h"
 
@@ -8,6 +9,9 @@ in_context::in_context(){
   
   this->audio = new in_audio();
   this->video = new in_video();
+}
+
+in_context::~in_context(){
 }
 
 int in_context::open(std::string filename){
@@ -38,8 +42,8 @@ std::ostream &operator<<(std::ostream &stream, in_context my_ctx){
   stream << "Input Context: " << my_ctx.getFileName() << std::endl;
   stream << "-------------" << std::endl;
 
-  stream << my_ctx.video;
-  stream << my_ctx.audio;
+  stream <<  my_ctx.video;
+  stream <<  my_ctx.audio;
 
   return stream;
 }

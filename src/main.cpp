@@ -37,6 +37,12 @@ int main(int argc, char *argv[]){
 
   av_register_all();
 
+#if DEBUG == 1
+ av_log_set_level(AV_LOG_DEBUG);
+ av_log_set_callback(my_log_callback);
+#endif
+
+
   in_context   inputContext;
   //open input streams, audio and video
   int err;
@@ -59,13 +65,84 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
+  //open input streams, audio and video
+  err = outputContext.initVideoProcessor(inputContext.getVideoCodecContext());
+  if(err){
+    std::cout << "Error: could not init video processor" << std::endl;
+    return 1;
+  }
+
+  //open input streams, audio and video
+  err = outputContext.initAudioProcessor(inputContext.getAudioCodecContext());
+  if(err){
+    std::cout << "Error: could not init audio processor" << std::endl;
+    std::cout << outputContext.getErrorMessage() << std::endl;
+    return 1;
+  }
+
+  
+
   std::cout << outputContext;
 
-#if DEBUG == 1
- av_log_set_level(AV_LOG_DEBUG);
- av_log_set_callback(my_log_callback);
-#endif
 
+ int keepGoing = 1;
+ int result;
+
+
+ while(keepGoing){
+   std::cout << "********Cycle*********** " <<  std::endl;
+
+   std::cout << "Video Dts " << outputContext.cur_video_dts() << " - Audio Dts " << outputContext.cur_audio_dts() << std::endl;
+
+   if((outputContext.cur_video_dts() - outputContext.cur_audio_dts()) >= AUDIO_VIDEO_MAX_DELAY){
+     result = inputContext.readAudioFrame();
+     std::cout << "Read audio frame!" << std::endl;
+
+     if(!result){
+       std::cout << "Audio bailed out!" << std::endl;
+       keepGoing = 0;
+     }
+
+     if(inputContext.hasAudioFrame()){
+       
+       std::cout << "Has audio frame! " << std::endl;
+	    
+      
+       //TODO Is Silent!!!
+       //TODO is black
+
+       result = outputContext.saveAudioFrame(inputContext.getAudioFrame());
+       inputContext.resetAudioFrame();
+
+       if(result){
+	 return 1;
+       }
+       
+     }
+     
+   }else{
+     result = inputContext.readVideoFrame();
+
+     std::cout << "Read video frame!" << std::endl;
+
+      if(!result){
+	std::cout << "Video bailed out!" << std::endl;
+	keepGoing = 0;
+      }
+      
+      if(inputContext.hasVideoFrame()){
+	std::cout << "Has video frame! " << std::endl;
+	result = outputContext.saveVideoFrame(inputContext.getVideoFrame());      
+	inputContext.resetVideoFrame();	
+
+	if(result){
+	  return 1;
+	}
+      }
+   }
+ }
+
+ outputContext.close();
   
   // We are done.
   std::cout << "End" << std::endl;

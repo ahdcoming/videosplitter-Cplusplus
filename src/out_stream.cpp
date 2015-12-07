@@ -7,6 +7,14 @@ out_stream::out_stream(enum AVCodecID Id){
   this->codecId = Id;
   this->is_open = 0;
   this->stream = NULL;
+
+  //Init the output packet, one will do for both video and audio
+  av_init_packet(&(this->packet));
+  this->packet.data = NULL;
+  this->packet.size = 0;
+
+  this->skipped_frames = 0;
+
 };  
 
 out_stream::~out_stream(){
@@ -45,8 +53,9 @@ int out_stream::open(AVFormatContext *av_format_context){
     return 1;
   }
 
+  /* setup_codec is a virtual call in the real audio/video stream */
   result = this->setup_codec();
-  if (!result) {
+  if (result) {
     errorMessage = "Could not setup codec";
     this->setErrorMessage(errorMessage);
     return 1;
@@ -83,10 +92,6 @@ int out_stream::close(){
   }
   
   this->is_open = 0;
-  return 0;
-}
-
-int out_stream::setup_codec(){
   return 0;
 }
 

@@ -5,8 +5,18 @@
   sets the stream as closed
 */
 in_stream::in_stream(enum AVMediaType type){
-  this->type = type;
-  this->is_open = 0;
+  this->type      = type;
+  this->is_open   = 0;
+  this->has_frame = 0;
+  
+  //Init the input packet, one will do for both video and audio
+  av_init_packet(&(this->packet));
+  this->packet.data = NULL;
+  this->packet.size = 0;
+
+  this->pFrame = NULL;
+
+  this->frames_skipped = 0;
 }
 
 /* Destructor
@@ -23,13 +33,27 @@ int in_stream::open(std::string filename){
 
   int ret;
 
+
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
+  this->pFrame = av_frame_alloc();
+#else
+  this->pFrame = avcodec_alloc_frame();
+#endif
+
   //Open the input file  
   ret = avformat_open_input(&this->av_format_context, filename.c_str(), NULL, NULL);
   if (ret <0){
     this->setErrorMessage(CANT_OPEN_INPUT_FILE, filename);
     return 1;
   }
-  
+
+  //Read packets of a media file to get the stream information. 
+  ret = avformat_find_stream_info(this->av_format_context, 0);
+  if (ret < 0) {
+    this->setErrorMessage(CANT_OPEN_INPUT_FILE, filename);
+    return 1;
+  }
+
   //Open the video codec and get the appropriate stream id (audio or video)
   this->stream_id  = this->open_codec_context();
   if(this->stream_id < 0){
@@ -58,12 +82,22 @@ std::ostream &operator<<(std::ostream &stream, in_stream *my_stream){
      codec and time base. 
   */
 
-  avformat_find_stream_info(my_stream->av_format_context, 0);
-  av_dump_format(my_stream->av_format_context, my_stream->stream_id, "", 0);
+  //avformat_find_stream_info(my_stream->av_format_context, 0);
+  //av_dump_format(my_stream->av_format_context, my_stream->stream_id, "", 0);
 
-  stream << "-------------------------" << std::endl;
-  stream << "Stream " << av_get_media_type_string(my_stream->type) << " Id :" << my_stream->stream_id << std::endl;
+  if(my_stream->type == AVMEDIA_TYPE_AUDIO){
+    stream << "-------------------------" << std::endl;
+    stream << "| INPUT AUDIO STREAM: " << av_get_media_type_string(my_stream->type) << " Id :" << my_stream->stream_id << std::endl;
+  }else{
+    stream << "-------------------------" << std::endl;
+    stream << "| INPUT VIDEO STREAM " << av_get_media_type_string(my_stream->type) << " Id :" << my_stream->stream_id << std::endl;
 
+    AVCodecContext *input_codec_ctx =   my_stream->getCodecContext(); // av_format_context->streams[my_stream->stream_id]->codec;
+    stream << "| Width: "  << input_codec_ctx->width << " - "  << std::endl;
+    stream << "| Height: " << input_codec_ctx->height << " - " << std::endl;
+    stream << "| Frame Format: " << input_codec_ctx->pix_fmt  << std::endl;
+  }
+  stream << "-------------------------" << std::endl;  
   return stream;
 }
 

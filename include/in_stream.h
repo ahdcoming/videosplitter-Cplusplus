@@ -20,12 +20,21 @@ class in_stream{
   int open(std::string filename);
   int close();
 
+  int hasFrame(){ return this->has_frame;};
+  void resetFrame(){ this->has_frame = 0;};
+  
+  AVFrame * getFrame(){ return this->pFrame;};
+
+  AVCodecContext * getCodecContext(){ return this->av_format_context->streams[this->stream_id]->codec;}
+
   /* get and set error messages for external use */
   std::string getErrorMessage(){ return this->errorMessage;};
   std::string getLastErrorMessage(){ return this->errorMessage;};
   void setErrorMessage(std::string error){ this->errorMessage = error ;};
 
   friend std::ostream &operator<<(std::ostream &stream, in_stream* o);
+
+  virtual int readFrame(){return 1;};
   
   //A flag, used once in the init_stream
   static int initialized;
@@ -48,8 +57,20 @@ class in_stream{
   //a flag, tell us if the stream is open
   int is_open;
 
+  //if there is a frame waiting to be processed
+  int has_frame;
+
+  //The input packet, will be used when saving packets to the file
+  AVPacket   packet;
+
+  // The last read audio frame
+  AVFrame    *pFrame;
+
+  int frames_skipped;
+
  private:
   in_stream(){}; // Default constructor we don't want
+
 
 
 };
