@@ -4,17 +4,21 @@
 #include <iostream>
 
 out_stream::out_stream(enum AVCodecID Id){
+
   this->codecId = Id;
   this->is_open = 0;
+
   this->stream = NULL;
+  this->error  = NULL;
+
+  this->skipped_frames = 0;
 
   //Init the output packet, one will do for both video and audio
   av_init_packet(&(this->packet));
   this->packet.data = NULL;
   this->packet.size = 0;
 
-  this->skipped_frames = 0;
-
+  this->pFrame = NULL;
 };  
 
 out_stream::~out_stream(){
@@ -35,31 +39,18 @@ int out_stream::open(AVFormatContext *av_format_context){
   
   /* find the codec for encoding */
   codec = avcodec_find_encoder(this->codecId);
-  if (!codec) {
-    errorMessage = "Video codec not found";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
-
+  IF_VAL_REPORT_ERROR_AND_RETURN(!codec, "Video codec not found");
 
   //create a new video stream
   /*We keep a direct pointer to the video stream, but you can still access
     it through the output_struct->av_format_context->streams structure */
 
   this->stream =  avformat_new_stream(av_format_context, codec);
-  if (!this->stream) {
-    errorMessage = "Could not alloc stream";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(!this->stream, "Could not alloc stream");
 
   /* setup_codec is a virtual call in the real audio/video stream */
   result = this->setup_codec();
-  if (result) {
-    errorMessage = "Could not setup codec";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(result, "Could not setup codec");
 
   //Populate the video stream video codec_context with our options
   codec_ctx  = this->stream->codec;
@@ -75,7 +66,7 @@ int out_stream::open(AVFormatContext *av_format_context){
     errorMessage =  "Video codec could not open codec\n";
     errorMessage.append("Error String: ");
     errorMessage.append(common::get_error_text(result));
-    this->setErrorMessage(errorMessage);
+    this->error->setMessage(errorMessage);
     return 1;
   }
 

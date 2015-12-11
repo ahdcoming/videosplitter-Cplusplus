@@ -1,38 +1,38 @@
 #include "in_stream.h"
 
-/*Constructor
-  gets the type of the stream (audio or video)
-  sets the stream as closed
-*/
+
 in_stream::in_stream(enum AVMediaType type){
+
+
   this->type      = type;
+
   this->is_open   = 0;
   this->has_frame = 0;
-  
+
+ 
   //Init the input packet, one will do for both video and audio
   av_init_packet(&(this->packet));
   this->packet.data = NULL;
   this->packet.size = 0;
 
   this->pFrame = NULL;
-
   this->frames_skipped = 0;
+  this->error = new errorClass;
+
+  this->av_format_context = NULL;
+
 }
 
-/* Destructor
-   close the stream, if necessary
-*/
 in_stream::~in_stream(){
   this->close();
 }
 
 /* open
-   open the file name, if its possible
+   open the input file named filename, if its possible
 */
 int in_stream::open(std::string filename){
 
   int ret;
-
 
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
   this->pFrame = av_frame_alloc();
@@ -42,24 +42,18 @@ int in_stream::open(std::string filename){
 
   //Open the input file  
   ret = avformat_open_input(&this->av_format_context, filename.c_str(), NULL, NULL);
-  if (ret <0){
-    this->setErrorMessage(CANT_OPEN_INPUT_FILE, filename);
-    return 1;
-  }
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, this->buildErrorMessage(CANT_OPEN_INPUT_FILE, filename));
+
+
 
   //Read packets of a media file to get the stream information. 
   ret = avformat_find_stream_info(this->av_format_context, 0);
-  if (ret < 0) {
-    this->setErrorMessage(CANT_OPEN_INPUT_FILE, filename);
-    return 1;
-  }
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, this->buildErrorMessage(CANT_OPEN_INPUT_FILE, filename));
 
   //Open the video codec and get the appropriate stream id (audio or video)
   this->stream_id  = this->open_codec_context();
-  if(this->stream_id < 0){
-    this->setErrorMessage(CANT_OPEN_CODEC);
-    return 1;
-  }
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(this->stream_id, this->buildErrorMessage(CANT_OPEN_CODEC, filename));
+
 
   this->is_open = 1;
   return 0;
@@ -157,21 +151,22 @@ int in_stream::open_codec_context(){
   return stream_id;
 }
 
-void in_stream::setErrorMessage(int_stream_error_code code, std::string payload){
+std::string in_stream::buildErrorMessage(int_stream_error_code code, std::string payload){
   std::string errorMessage;
 
+  errorMessage = "Something wicked happened";
   switch(code){
   case CANT_OPEN_CODEC:
     errorMessage = "Filed to open codec: ";
     errorMessage.append(av_get_media_type_string(this->type));
-    this->setErrorMessage(errorMessage);
     break;
   case CANT_OPEN_INPUT_FILE:
     errorMessage = "Could not open input file: " ;
     errorMessage.append(payload);
-    this->setErrorMessage(errorMessage);
     break;
   };
+
+  return errorMessage;
 }
 
 

@@ -3,65 +3,102 @@
 
 #define OUTPUT_FORMAT ".wmv" 
 
-#include <string>
-#include <iostream>
 
-extern "C"{
-#include <libavutil/avutil.h>
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-}
-
+#include "common.h"
 #include "out_stream.h"
+
 
 class out_context{
  public:
-  /* init calls common ffmpeg procedures needed to setup the environment */
-  out_context();
+
+  /* out_context 
+     constructor
+  */
+  out_context( std::string );
+
+  /* ~out_context 
+     destructor
+  */
   ~out_context();
 
-  /* open open the file name and extracts the input audio and video streams */
-  int open(std::string filename);
+  /* open 
+     open the file name and extracts the input audio and video streams 
+     the file name is from the prefix received in the constructor
+  */
+  int open();
+
+  /* close
+     closes the output audio and video stream
+   */
   int close();
+
+  /* getFileName 
+     returns the name of the currently opened file.
+  */
   std::string getFileName(){ return this->filename;}
 
-  std::string getLastErrorMessage(){ return this->errorMessage;};
   friend std::ostream &operator<<(std::ostream &stream, out_context o);
 
-  out_stream * getAudioStream(){return this->audio;}
-  out_stream * getVideoStream(){return this->video;}
-
+  /* saveAudioFrame 
+     the input audio frame gets resampled and saved to the output stream
+  */
   int saveAudioFrame(AVFrame *audioFrame){ return this->audio->saveFrame(audioFrame, this->av_format_context);}
+
+  /* saveVideoFrame
+     the input video frame gets scaled and saved to the output stream
+  */
   int saveVideoFrame(AVFrame *videoFrame){ return this->video->saveFrame(videoFrame, this->av_format_context);}
 
+  /* cur_video_dts 
+     return the video dts, tipically is time stamp of the last frame expres in 1/1000 seconds
+  */
   int64_t cur_video_dts(){ return this->video->cur_dts();};
+
+  /* cur_audio_dts 
+     return the audio dts, tipically is time stamp of the last frame expres in 1/1000 seconds
+  */
   int64_t cur_audio_dts(){ return this->audio->cur_dts();};
 
+  /* initAudioProcessor
+     the audio resampler needs some initialization activity
+  */
   int initAudioProcessor(AVCodecContext *input_audio_codec_ctx){ return this->audio->init_processor(input_audio_codec_ctx);}
+
+  /* initVideoProcessor
+     the video rescaler needs some initialization activity
+  */
   int initVideoProcessor(AVCodecContext *input_video_codec_ctx){ return this->video->init_processor(input_video_codec_ctx);}
 
+  /* isBlackFrame
+     returns 1 if the current video frame is black
+  */
+  int isBlackFrame(){ if(this->video->isBlackFrame()){return 1;}else{return 0;}};
 
-  std::string getErrorMessage(){ return this->errorMessage;};
+  /* isSilentFrame
+     returns 1 if the current audio frame is silent
+  */
+  int isSilentFrame(){ if(this->audio->isSilentFrame()){return 1;}else{return 0;}};
+
+
+
+  // the progressive file counter name
+  int    fileCounter;
+  
+  // the prefix for the output files
+  std::string filePrefix;
+
+  errorClass *error;
 
  private:
-  /* get and set error messages for external use */
 
-  void setErrorMessage(std::string error){ this->errorMessage = error ;};
+  /* the constructor which we don't want */
+  out_context(){};
 
   //The input file name
   std::string filename;
-  std::string errorMessage;
 
   //a flag, tell us if the stream is open
   int is_open;
-
-  // How many samples have we processed until now?
-  // Note Samples, not frames
-  // Counting the number of audio samples is our key to keep audio and video in sinc
-  int64_t      audio_samples_count;
-
-  // We need to count the skipped  frames, in order to sync audio and video
-  int         video_frames_skipped;
 
 
   // The container for the audio video output streams

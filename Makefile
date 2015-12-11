@@ -72,3 +72,4 @@ videosplitter:  ${OBJS}
 
 clean: 
 		${RM} ${OBJDIR}/*.o  ${BUILDDIR}/videosplitter
+		${RM} gino*

@@ -1,13 +1,21 @@
+
 #include "out_context.h"
 #include "out_stream_wmav2.h"
 #include "out_stream_wmv2.h"
+#include <sstream>
 
-out_context::out_context(){
-  this->is_open              = 0;
+
+out_context::out_context(std::string prefix){
 
   this->video = NULL;
   this->audio = NULL;
 
+  this->fileCounter = 0;
+  this->filePrefix  = prefix;
+
+  this->is_open     = 0;
+
+  this->error = new errorClass;
 }
 
 out_context::~out_context(){
@@ -31,63 +39,50 @@ std::ostream &operator<<(std::ostream &stream, out_context my_ctx){
   return stream;
 }
 
-int out_context::open(std::string filename){
-  this->filename = filename;
 
-  //We need to do this every time we open a new output file
-  this->audio_samples_count     = 0 ;
-  
+int out_context::open(){
+
+  std::stringstream ss;
+
+  //let's build the output file name
+  this->fileCounter++;
+  ss << this->filePrefix << "_" << this->fileCounter << ".wmv";
+
+  this->filename = ss.str();
+
+  std::cout << "Output Filename: " << this->filename << std::endl;
+
   /* allocate the output media context for the new output stream */
   this->av_format_context = avformat_alloc_context();
-  if (!av_format_context) {
-    std::string error("Memory error");
-    this->setErrorMessage(error);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(!av_format_context, "Memory error");
 
   //try to guess the output file format
   this->av_format_context->oformat = av_guess_format(NULL,OUTPUT_FORMAT,NULL);
-  if(this->av_format_context->oformat == NULL){
-    std::string error("Can't find a suitable output format");
-    this->setErrorMessage(error);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(this->av_format_context->oformat == NULL, "Can't find a suitable output format");
 
-  //we need the output audio and video codec
+  //we need the output audio and video stream for the current format (only .wmv for now)
   this->video = new out_stream_wmv2;
   this->audio = new out_stream_wmav2;
 
   int ret;
+
+  //let's open the output contexts
   ret = this->video->open(this->av_format_context);
-  if(ret){
-    this->setErrorMessage(this->video->getLastErrorMessage());
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(ret, this->video->error->getLastMessage());
 
   ret = this->audio->open(this->av_format_context);
-  if(ret){
-    this->setErrorMessage(this->audio->getLastErrorMessage());
-    return 1;
-  }
- 
+  IF_VAL_REPORT_ERROR_AND_RETURN(ret, this->audio->error->getLastMessage());
 
-
-  /* open the output file, if needed */
+  /* open the output file */
   if (!(av_format_context->flags & AVFMT_NOFILE)) {
-    if (avio_open(&av_format_context->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
-      std::string error("Could not open output file");
-      this->setErrorMessage(error);
-      return 1;
-    }
+    ret = avio_open(&av_format_context->pb, filename.c_str(), AVIO_FLAG_WRITE);
+    IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, "Could not open output file");
   }
-  
   
   /* write the stream header, if any */
   avformat_write_header(av_format_context ,NULL);
 
   std::cout <<  "\nOpened output file: " << filename << std::endl ;
-
-
 
   is_open = 1;
 
@@ -103,6 +98,7 @@ int out_context::close(){
   //write the tail of the file
   av_write_trailer(this->av_format_context);
 
+  //cleanup
   delete(this->video);
   delete(this->audio);
 
@@ -116,10 +112,7 @@ int out_context::close(){
   /* free the stream */
   av_free(this->av_format_context);
 
-  this->video_frames_skipped = 0 ;
-  this->audio_samples_count = 0;
-
-
   this->is_open = 0;
   return 0;
 }
+

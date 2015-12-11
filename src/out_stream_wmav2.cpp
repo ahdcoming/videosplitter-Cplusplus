@@ -71,13 +71,7 @@ int out_stream_wmav2::initResampler(AVCodecContext *input_codec_ctx){
 				 1);
 
 
- 
-  if(ret<0){
-    errorMessage = "Error filling output frame.";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
-
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, "Error filling output frame");
 
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
   this->pFrameCodec = av_frame_alloc();
@@ -103,23 +97,12 @@ int out_stream_wmav2::initResampler(AVCodecContext *input_codec_ctx){
 				 numBytes,
 				 1);
 
-  if(ret<0){
-    errorMessage = "Error filling output codec frame.";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
 
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, "Error filling output codec frame");
   
   this->resample_ctx = swr_alloc();
-
-  if(!this->resample_ctx){
-    errorMessage = "Could not allocate resample context.";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
-
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN((!this->resample_ctx), "Could not allocate resample context");
   
-
   //input
   av_opt_set_int(this->resample_ctx, "in_channel_layout",  av_get_default_channel_layout(input_codec_ctx->channels),0);
   av_opt_set_int(this->resample_ctx, "in_sample_rate",     input_codec_ctx->sample_rate,                0);
@@ -136,18 +119,15 @@ int out_stream_wmav2::initResampler(AVCodecContext *input_codec_ctx){
   if (ret < 0) {
     swr_free(&this->resample_ctx);
     errorMessage = "Could not open resample context.";
-    this->setErrorMessage(errorMessage);
+    this->error->setMessage(errorMessage);
     return 1;
   }
 
   this->samples_fifo   = av_audio_fifo_alloc(AUDIO_OUT_SAMPLE_FMT, 
-						   AUDIO_OUT_CHANNELS, 
-						   1);
-  if(!this->samples_fifo){
-    errorMessage = "Could not open fifo queue.";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
+					     AUDIO_OUT_CHANNELS, 
+					     1);
+
+  IF_VAL_REPORT_ERROR_AND_RETURN(!this->samples_fifo, "Could not open fifo queue");
 
   return 0;
 }
@@ -192,28 +172,21 @@ int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_co
   //Push the samples in the audio fifo
   result = av_audio_fifo_write(this->samples_fifo, (void **)this->pFrame->data,  this->pFrame->nb_samples);
 
-  if(result < this->pFrame->nb_samples){
-    errorMessage = "Error writing data to audio fifo.";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(result < this->pFrame->nb_samples, "Error writing data to audio fifo");
 
-
-  std::cout << "------- Fifo Frames ! " 
+#if DEBUG == 1
+  std::cout << " - Fifo Frames : " 
 	    << av_audio_fifo_size(this->samples_fifo) 
 	    << " - " 
-	    <<  this->stream->codec->frame_size  
-	    << std::endl;
+	    <<  this->stream->codec->frame_size 
+	    <<  "    ";
 
-
-  std::cout <<  "Samples count " << this->samples_count << std::endl;
+#endif
+  
 
   //If we have enough samples in the fifo, we can send them to the encoder
   //while (((this->target_dts - this->stream->cur_dts) >= AUDIO_VIDEO_MAX_DELAY)
   while(av_audio_fifo_size(this->samples_fifo) >= this->stream->codec->frame_size){
-
-
-    std::cout << "------- Audio Packet Write 1 !"  << std::endl;
 
     av_audio_fifo_read(this->samples_fifo,
 		       (void **)this->pFrameCodec->data,
@@ -222,8 +195,6 @@ int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_co
     //Set the pts
     this->samples_count += this->pFrameCodec->nb_samples;
     this->pFrameCodec->pts = this->samples_count;
-
-    std::cout <<  "Samples count " << this->samples_count << std::endl;
 
     int got_output = 0;
 
@@ -238,28 +209,17 @@ int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_co
     /* encode the audio frame */
     if (ret < 0) {
       errorMessage = "Error encoding output frame.";
-      //fprintf(stderr, "\nError String: %d %s \n", ret, get_error_text(ret));
-
-      this->setErrorMessage(errorMessage);
-      //fprintf(stderr, "\nError encoding audio frame\n");
-
+      this->error->setMessage(errorMessage);
       av_free_packet(pktPtr);
       return 1;
     }
     
     if (got_output) {
 
-      std::cout <<  "AUDIO out pts " << pktPtr->pts << std::endl;
-      std::cout <<  "AUDIO out dts " << pktPtr->dts << std::endl;
-
       //The packet pts has to be converted from the codec timebase to the stream time base
       av_packet_rescale_ts(pktPtr, this->stream->codec->time_base, this->stream->time_base);
       pktPtr->dts = pktPtr->pts;
       pktPtr->stream_index  = this->stream->index;
-
-      std::cout <<  "AUDIO POST out pts " << pktPtr->pts << std::endl;
-      std::cout <<  "AUDIO POST dts " << pktPtr->dts << std::endl;
-
 
     //Write to file
 #if INTERLEAVED == 1	
@@ -276,4 +236,28 @@ int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_co
     }
   }
   return 0;
+}
+
+int out_stream_wmav2::isSilentFrame(){ 
+
+  float noise = 0.001;
+  const float *pData = (const float *)this->pFrame->data[0];
+  int i;
+  int nb_samples = this->pFrame->nb_samples;
+
+  int counter = 0;
+
+  for (i = 0; i < nb_samples; i++, pData++){
+    if(*pData < noise && *pData > -noise){
+      counter ++;
+    }else{
+      counter = 0;
+    }
+  }
+
+  if(counter > 10){
+    printf("\nCounter %d \n", counter);
+  }
+  
+  return counter;
 }

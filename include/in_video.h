@@ -5,10 +5,17 @@
 
 class in_video: public in_stream{
  public:
+  /*in_video
+    constructor, calls the parent class
+  */
   in_video():in_stream(AVMEDIA_TYPE_VIDEO){}
-    friend std::ostream &operator<<(std::ostream &stream, in_video* o);
 
-    //virtuals
+    friend std::ostream &operator<<(std::ostream &stream, in_video* o);
+    
+    /*readFrame
+      virtual: read a frame from the input stream 
+    */
+
     int readFrame();
     
  private:

@@ -1,10 +1,10 @@
 #include "in_video.h"
 #include <string>
 #include <iostream>
+
 extern "C" {
 #include <libavformat/avformat.h>
 }
-
 
 
 int in_video::readFrame(){
@@ -16,10 +16,11 @@ int in_video::readFrame(){
   int frameFinished;
   int decoded = 0;
 
-
+  // We keep reading from the input context until we have a complete frame.
+  // A frame can be divided over many packets
   while(av_read_frame(pFormatCtx, &(this->packet))>=0){
+
     //The packet now contains some of our input stream data - we need to fill the correct fields
-    
     if(this->packet.stream_index == input_video_stream_id) {
 
       result = avcodec_decode_video2(this->av_format_context->streams[input_video_stream_id]->codec,
@@ -28,9 +29,8 @@ int in_video::readFrame(){
 				     &(this->packet));
 
 
-
       if(result <= 0){
-	std::cout << "Read an Empty video frame!: " << result << std::endl;
+	this->error->setMessage("Read an Empty video frame!");
 	//We need to keep track of the skipped video frames 
 	this->frames_skipped += this->av_format_context->streams[input_video_stream_id]->codec->ticks_per_frame;
       }
@@ -50,10 +50,5 @@ int in_video::readFrame(){
     av_free_packet(&(this->packet));
   }
 
-  printf("\nVideo read nothing\n");
-
   return decoded;
-  
-  
-  return 0;
 }

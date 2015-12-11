@@ -6,6 +6,7 @@ int out_stream_wmv2::setup_codec(){
       AVRational  time_base;
       AVCodecContext *codec_ctx;
 
+      //Time base for the video stream
       time_base.num = VIDEO_OUT_FRAMERATE_DEN ;
       time_base.den = VIDEO_OUT_FRAMERATE_NUM ;
 
@@ -25,11 +26,12 @@ int out_stream_wmv2::setup_codec(){
       codec_ctx->gop_size = 12;
       codec_ctx->mb_decision = 1;
 
-
+#if DEBUG == 1
       std::cout << "Video Codec Opened "  << std::endl;
-      
+#endif      
+
       return 0;
-  }
+}
   
 
 int out_stream_wmv2::init_processor(AVCodecContext *input_video_codec_ctx){
@@ -40,7 +42,9 @@ int out_stream_wmv2::initScaler(AVCodecContext *input_video_codec_ctx){
 
   //We need an output frame and theen we prepare the scaler
 
-  //An empty frame this frame will be our output frame, will hold each scaled frame.
+  std::cout << "Init Scaler "  << std::endl;
+
+  //An empty frame -  this frame will be our output frame, will hold each scaled frame.
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
   this->pFrame = av_frame_alloc();
 #else
@@ -53,6 +57,7 @@ int out_stream_wmv2::initScaler(AVCodecContext *input_video_codec_ctx){
   this->pFrame->height = VIDEO_OUT_HEIGHT   ;
 
   int numBytes;
+
   // The frame need a data buffer. 
   // We need to allocate a buffer with the right size.
   // Determine required buffer size and allocate buffer
@@ -60,6 +65,7 @@ int out_stream_wmv2::initScaler(AVCodecContext *input_video_codec_ctx){
 			      VIDEO_OUT_WIDTH,
 			      VIDEO_OUT_HEIGHT);
 
+  
   numBytes += FF_INPUT_BUFFER_PADDING_SIZE;
   
   uint8_t *buffer            = NULL;
@@ -97,7 +103,9 @@ int out_stream_wmv2::initScaler(AVCodecContext *input_video_codec_ctx){
     return 1;
   }
 
+#if DEBUG == 1
   std::cout << "Scaler Opened "  << std::endl;
+#endif
 
   return 0;
 }
@@ -105,8 +113,6 @@ int out_stream_wmv2::initScaler(AVCodecContext *input_video_codec_ctx){
 int out_stream_wmv2::scaleFrame(AVFrame *pFrameIn){
   
   int ret;
-
-  std::string errorMessage;
 
   ret = sws_scale(this->pRescale_ctx, 
 		  (uint8_t const * const *)pFrameIn->data,
@@ -116,20 +122,13 @@ int out_stream_wmv2::scaleFrame(AVFrame *pFrameIn){
 		  this->pFrame->data, 
 		  this->pFrame->linesize);
 
-  if(ret != this->pFrame->height){
-    errorMessage = "\nError during frame scaling \n";
-    this->setErrorMessage(errorMessage);
-    return 1;
-  }
+  IF_VAL_REPORT_ERROR_AND_RETURN(ret != this->pFrame->height, "Error during frame scaling");
   
   return 0;
 }
 
 
 int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_context){
-
-  //The result will go in this->pFrame
-  this->scaleFrame(pFrameIn);
 
   int ret, got_output;
   std::string errorMessage;
@@ -138,17 +137,17 @@ int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_con
 
   pktPtr = &(this->packet);
 
+  //First we scale the input frame
+  //The result will go in this->pFrame
+  this->scaleFrame(pFrameIn);
+
   //Encode the output frame into the packet
   ret = avcodec_encode_video2(this->stream->codec, 
 			      pktPtr,
 			      this->pFrame, 
 			      &got_output);
-    
-  if (ret < 0) {
-    errorMessage = "\nError encoding frame\n";
-    this->setErrorMessage(errorMessage);
-    return 0;
-  }
+
+  IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, "Error encoding frame");
 
   if (got_output) {
     
@@ -170,7 +169,7 @@ int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_con
       pktPtr->dts = pktPtr->pts;
     }
     
-    //If is a key frame
+    //If this is a key frame
     if(this->stream->codec->coded_frame->key_frame){
       pktPtr->flags |= AV_PKT_FLAG_KEY;
     }
@@ -183,15 +182,88 @@ int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_con
 #else
     ret = av_write_frame(av_format_context, pktPtr);
 #endif
-    
-    if(ret <0){
-      errorMessage = "Error saving video frame";
-      this->setErrorMessage(errorMessage);
-      return 1;
-    }
+
+    IF_VAL_NEGATIVE_REPORT_ERROR_AND_RETURN(ret, "Error saving video frame");
     
     av_free_packet(pktPtr); 
   }
   
   return 0;
+}
+
+/* Tell if we have  a blackframe 
+   It counts the number of black pixels in centered squares at the middle of the screen
+*/
+int out_stream_wmv2::isBlackFrame(){
+
+  int frameAvg = 0;
+
+  int height,width;
+
+  int result = 0;
+
+  height = this->pFrame->height;
+  width  = this->pFrame->width;
+
+  if(this->pFrame->format == AV_PIX_FMT_YUV420P ){
+    //The frame has to be in this format 
+    frameAvg = countBlackPixels(width/8, height/8, 50);
+    if(frameAvg > 80){
+      frameAvg = countBlackPixels(width, height, 50);
+    }
+    if(frameAvg > 80){
+      result = 1;
+    }
+  }
+  return result;
+}
+
+
+/* Counts the percentage of black pixels in the rectangle
+   Depends to the pFrame format 
+*/
+int out_stream_wmv2::countBlackPixels(int rectW, int rectH, int threshold){
+  int x, y, halfX, halfY;
+  int Y,Cb,Cr;
+  int frameSum = 0;
+  int frameAvg = 0;
+
+  int width  = this->pFrame->width;
+  int height = this->pFrame->height;
+
+  int offsetX = (width-rectW)/2;
+  int offsetY = (height-rectH)/2;
+
+  char colors[3];
+  int R,G,B;
+
+  frameSum = 0;
+  for(y=offsetY; y<rectH+offsetY; y++){
+    for(x=offsetX; x<rectW+offsetX; x++){
+      
+      Y  = this->pFrame->data[0][y * this->pFrame->linesize[0] + x];
+
+      halfX = x/2;
+      halfY = y/2;
+      Cb = this->pFrame->data[1][halfY * this->pFrame->linesize[1] + halfX];
+      Cr = this->pFrame->data[2][halfY * this->pFrame->linesize[2] + halfX];
+
+      if(Y < threshold){
+
+	common::YUV2RGB(Y,Cr,Cb,colors);
+
+	R = colors[0];
+	G = colors[1];
+	B = colors[2];
+
+	if(R<137 && G<137 && B<137){
+	  frameSum += 1;
+	}
+      }
+    }
+  }
+  
+  frameAvg = (100.0*frameSum)/(rectW*rectH);
+  return frameAvg;
+    
 }

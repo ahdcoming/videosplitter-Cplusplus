@@ -1,0 +1,23 @@
+
+Scrivere la durate del filmato in ingresso
+
+Verificare la trasmissione degli errori
+
+Verificare: inputContext.readAudioFrame() - se non restituisce niente, e' un errore o cosa? 
+Verificare: inputContext.readVideoFrame() - se non restituisce niente, e' un errore o cosa? 
+
+
+Is Silent
+Is Black
+
+
+
+Dobbiamo poter specificare le dimensioni dell'output video stream
+Dobbiamo poter cambiare il tipo del file di output - non solo wmv
+
+
+
+
+
+E' davvero necessario ricompilare tutto? 
+Non sarebbe piu' veloce se saltassimo direttamente agli spot?

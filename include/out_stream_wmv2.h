@@ -22,12 +22,10 @@ public:
  protected:
 
   /* virtuals */
-  /* push a frame for writing */
   int saveFrame(AVFrame*, AVFormatContext*);
-
-  /* setup codec, virtual, depends of the codec */
   int setup_codec();
   int init_processor(AVCodecContext *);
+  int isBlackFrame();
 
 
  private:	    
@@ -35,8 +33,8 @@ public:
   /*for video streams*/
   int initScaler(AVCodecContext *);
   int scaleFrame(AVFrame *pFrameIn);
+  int countBlackPixels(int rectW, int rectH, int threshold);
 
-  AVFrame *pFrame;
   struct SwsContext *pRescale_ctx;
   int frames_skipped;
   
