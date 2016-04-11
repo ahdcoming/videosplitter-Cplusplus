@@ -33,6 +33,8 @@ int in_audio::readFrame(){
     //The packet now contains some of our input stream data - we need to fill the correct fields
     if(this->packet.stream_index == input_audio_stream_id) {
 
+      std::cout << " - Read Audio Frame ! " << this->packet.pts << "  ";
+
       //We decode the input frame and the data is trasnfered from the packet to the frame, until we are done
       result = avcodec_decode_audio4(this->av_format_context->streams[input_audio_stream_id]->codec,
 				     this->pFrame,

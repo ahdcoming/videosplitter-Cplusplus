@@ -30,7 +30,7 @@ class out_stream{
      get's a frame, and then process it in order to get it ready for the output stream
      audio frames get resampled and stored, video frames get scaled and sent to the output stream
   */
-  virtual int saveFrame(AVFrame*, AVFormatContext*){ return 1;};
+  virtual int saveFrame(AVFrame*, AVFormatContext*, int){ return 1;};
 
   /* setup_codec
      sets the output codec settings and then start the codec
@@ -53,6 +53,11 @@ class out_stream{
   */
   virtual int isSilentFrame(){ return 1; }
 
+  /* getVolume
+     returns the audio volume, if it's an audio stream
+  */
+  virtual float getVolume(){ return 0; }
+
   /* cur_dts
      it returns the current dts of the output stream
      it is used externally to keep audio and video in sync
@@ -63,9 +68,6 @@ class out_stream{
 
   //output 
   friend std::ostream &operator<<(std::ostream &stream, out_stream o);
-
-  // We need to count the skipped  frames, in order to sync audio and video
-  int   skipped_frames;
 
   //The output data packet, will be used when saving packets to the file
   AVPacket   packet;

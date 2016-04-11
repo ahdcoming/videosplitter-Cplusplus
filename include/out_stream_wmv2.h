@@ -22,7 +22,7 @@ public:
  protected:
 
   /* virtuals */
-  int saveFrame(AVFrame*, AVFormatContext*);
+  int saveFrame(AVFrame*, AVFormatContext*, int);
   int setup_codec();
   int init_processor(AVCodecContext *);
   int isBlackFrame();
@@ -34,6 +34,14 @@ public:
   int initScaler(AVCodecContext *);
   int scaleFrame(AVFrame *pFrameIn);
   int countBlackPixels(int rectW, int rectH, int threshold);
+
+  //Calculate the difference from the current pframe and the previous
+  double getSceneScore();
+  double prevSceneScore;
+  
+  //Used for scene detection
+  AVFrame *pFrameScene;
+
 
   struct SwsContext *pRescale_ctx;
   int frames_skipped;

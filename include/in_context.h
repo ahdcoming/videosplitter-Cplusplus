@@ -47,6 +47,9 @@ class in_context{
   AVCodecContext * getAudioCodecContext(){return this->audio->getCodecContext();}
   AVCodecContext * getVideoCodecContext(){return this->video->getCodecContext();}
 
+  int skippedVideoFrames(){ return this->video->skippedFrames();}
+  int skippedAudioFrames(){ return this->audio->skippedFrames();}
+
   errorClass *error;
  private:
   

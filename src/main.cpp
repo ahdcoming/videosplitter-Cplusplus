@@ -100,6 +100,8 @@ int main(int argc, char *argv[]){
   int blackFramesFlag   = 0;
   int output_close_file = 0;
 
+  float minVolume, currentVolume;
+
   while(keepGoing){
 
     audio_dts = outputContext.cur_audio_dts();
@@ -123,7 +125,6 @@ int main(int argc, char *argv[]){
 
       // We read a frame from the input audio stream 
       result = inputContext.readAudioFrame();
-
       // In this case we bail out
       if(!result){
 	std::cout << std::endl << "No Audio frame read." << std::endl;
@@ -132,8 +133,8 @@ int main(int argc, char *argv[]){
 
       //We have a frame to pass to the output audio stream (it will resampled before saving)
       if(inputContext.hasAudioFrame()){
+	result = outputContext.saveAudioFrame(inputContext.getAudioFrame(),inputContext.skippedAudioFrames());      
 
-	result = outputContext.saveAudioFrame(inputContext.getAudioFrame());
 	//We do some cleanup, if needed
 	inputContext.resetAudioFrame();
 	
@@ -142,13 +143,22 @@ int main(int argc, char *argv[]){
 	  return 1;
 	}
 
-	if(blackFramesFlag){
+	if(blackFramesFlag && video_dts > 1000){
 	  if(outputContext.isSilentFrame()){
 	    output_close_file = 1;
+	  }else{
+	    currentVolume = outputContext.getAudioVolume();
+	    std::cout << std::endl << "AUDIO Volume: "  << currentVolume << std::endl;
+	    if(currentVolume < minVolume){
+	      minVolume = currentVolume;
+	    }else{
+	      //The volume is raising again, it's the same as a silent frame
+	      output_close_file = 1;
+	    }
 	  }
 	}
       }
-     
+
    }else{
 
       //We read a video frame from the input stream
@@ -162,7 +172,7 @@ int main(int argc, char *argv[]){
       
       //We have a frame to pass wto the output video stream (it be resampled before saving)
       if(inputContext.hasVideoFrame()){
-	result = outputContext.saveVideoFrame(inputContext.getVideoFrame());      
+	result = outputContext.saveVideoFrame(inputContext.getVideoFrame(),inputContext.skippedVideoFrames());      
 	//we do some cleanup, if needed
 	inputContext.resetVideoFrame();	
 
@@ -173,13 +183,17 @@ int main(int argc, char *argv[]){
 
 	if(outputContext.isBlackFrame()){
 	  if(!isFirstVideoFrame){
-	    std::cout <<  " - BLACK FRAME " ;
+	    std::cout << std::endl <<  " - BLACK FRAME " << std::endl;
 	    blackFramesFlag++ ; 
+	    
+	    minVolume = outputContext.getAudioVolume();
+	    
 	  }
 	}else{
 	  blackFramesFlag = 0 ; 
 	  isFirstVideoFrame = 0;
 	}
+
       }
     }
 
@@ -192,22 +206,6 @@ int main(int argc, char *argv[]){
       outputContext.close();
       outputContext.open();
 
-      //open output video processor (needs some info from the input video stream)
-      err = outputContext.initVideoProcessor(inputContext.getVideoCodecContext());
-      if(err){
-	std::cout << "Error: could not init video processor" << std::endl;
-	std::cout << outputContext.error->getMessage() << std::endl;
-	return 1;
-      }
-      
-      //open output audio processor (need some info from the input audio stream)
-      err = outputContext.initAudioProcessor(inputContext.getAudioCodecContext());
-      if(err){
-	std::cout << "Error: could not init audio processor" << std::endl;
-	std::cout << outputContext.error->getMessage() << std::endl;
-	return 1;
-      }
-      std::cout <<  std::endl << " - RIAPERTO IL FILE  " << std::endl ;
     }
 
     

@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+AVAudioFifo * out_stream_wmav2::samples_fifo_queue = NULL;
+
 int out_stream_wmav2::setup_codec(){
       AVRational  time_base;
       AVCodecContext *codec_ctx;
@@ -123,9 +125,15 @@ int out_stream_wmav2::initResampler(AVCodecContext *input_codec_ctx){
     return 1;
   }
 
-  this->samples_fifo   = av_audio_fifo_alloc(AUDIO_OUT_SAMPLE_FMT, 
-					     AUDIO_OUT_CHANNELS, 
-					     1);
+  //Must be static, in order to survive the closing and reopening of the same output file
+  if(!out_stream_wmav2::samples_fifo_queue){
+    out_stream_wmav2::samples_fifo_queue = av_audio_fifo_alloc(AUDIO_OUT_SAMPLE_FMT, 
+							       AUDIO_OUT_CHANNELS, 
+							       1);
+  }
+
+  this->samples_fifo   = out_stream_wmav2::samples_fifo_queue;
+
 
   IF_VAL_REPORT_ERROR_AND_RETURN(!this->samples_fifo, "Could not open fifo queue");
 
@@ -161,7 +169,7 @@ int out_stream_wmav2::resampleFrame(AVFrame *pFrameIn){
       return 0;
 }
 
-int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_context){
+int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_context, int skipped_frames){
 
   std::string errorMessage;
 
@@ -238,26 +246,44 @@ int out_stream_wmav2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_co
   return 0;
 }
 
+float out_stream_wmav2::getVolume(){ 
+  float volume = 0;
+  float sumSamples = 0;
+
+  const float *pData = (const float *)this->pFrameCodec->data[0];
+  int i;
+  int nb_samples = this->pFrameCodec->nb_samples;
+  
+  for (i = 0; i < nb_samples; i++, pData++){
+    sumSamples += *pData * *pData;
+  }
+  volume = sumSamples/nb_samples;
+  
+  return volume;
+}
+
 int out_stream_wmav2::isSilentFrame(){ 
 
   float noise = 0.001;
-  const float *pData = (const float *)this->pFrame->data[0];
+  const float *pData = (const float *)this->pFrameCodec->data[0];
   int i;
-  int nb_samples = this->pFrame->nb_samples;
+  int nb_samples = this->pFrameCodec->nb_samples;
 
   int counter = 0;
 
   for (i = 0; i < nb_samples; i++, pData++){
     if(*pData < noise && *pData > -noise){
       counter ++;
+
+      if(counter > 20){
+	std::cout << std::endl << "SILENT!!!" << counter << std::endl ;
+	return counter;
+      }
+
     }else{
       counter = 0;
     }
   }
-
-  if(counter > 10){
-    printf("\nCounter %d \n", counter);
-  }
-  
+  //return 0;
   return counter;
 }

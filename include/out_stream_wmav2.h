@@ -20,14 +20,16 @@ class out_stream_wmav2:public out_stream {
     
     
     void set_target_dts(uint64_t dts){ this->target_dts = dts;};
-    
+
+    static AVAudioFifo *samples_fifo_queue ;    
  protected:
     
     // virtuals
-    int saveFrame(AVFrame*, AVFormatContext*);
+    int saveFrame(AVFrame*, AVFormatContext*, int);
     int setup_codec();
     int init_processor(AVCodecContext *);
     int isSilentFrame();
+    float getVolume();
 
     
 private:	    

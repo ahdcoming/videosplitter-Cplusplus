@@ -35,6 +35,8 @@ int out_stream_wmv2::setup_codec(){
   
 
 int out_stream_wmv2::init_processor(AVCodecContext *input_video_codec_ctx){
+  this->pFrameScene    = NULL;
+  this->prevSceneScore = 0;
   return this->initScaler(input_video_codec_ctx);
 }
 
@@ -128,7 +130,7 @@ int out_stream_wmv2::scaleFrame(AVFrame *pFrameIn){
 }
 
 
-int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_context){
+int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_context, int skipped_frames){
 
   int ret, got_output;
   std::string errorMessage;
@@ -162,7 +164,7 @@ int out_stream_wmv2::saveFrame(AVFrame *pFrameIn, AVFormatContext *av_format_con
 
       //Here we add the skipped_frames_count, to keep track of the skipped frames, otherwise the audio will not be in sinc with video
       
-      pktPtr->pts = av_rescale_q(this->stream->codec->coded_frame->pts + this->skipped_frames , 
+      pktPtr->pts = av_rescale_q(this->stream->codec->coded_frame->pts + skipped_frames , 
 				 this->stream->codec->time_base, 
 				 this->stream->time_base);
       
@@ -202,6 +204,17 @@ int out_stream_wmv2::isBlackFrame(){
 
   int result = 0;
 
+  double sceneScore = this->getSceneScore();
+
+  if(0){
+  if(sceneScore > 0.8){
+    std::cout << std::endl << "-> Scene score: "<< sceneScore << std:: endl;
+    return 1;
+  }else{
+    return 0;
+  }
+  }
+
   height = this->pFrame->height;
   width  = this->pFrame->width;
 
@@ -215,6 +228,7 @@ int out_stream_wmv2::isBlackFrame(){
       result = 1;
     }
   }
+
   return result;
 }
 
@@ -266,4 +280,55 @@ int out_stream_wmv2::countBlackPixels(int rectW, int rectH, int threshold){
   frameAvg = (100.0*frameSum)/(rectW*rectH);
   return frameAvg;
     
+}
+
+double out_stream_wmv2::getSceneScore(){
+  double result = 0;
+  
+  if(this->pFrameScene == NULL){
+
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
+    this->pFrameScene = av_frame_alloc();
+#else
+    this->pFrameScene = avcodec_alloc_frame();
+#endif
+
+    this->pFrameScene->width  = this->pFrame->width;
+    this->pFrameScene->height = this->pFrame->height;
+    this->pFrameScene->format = this->pFrame->format;
+
+    av_frame_get_buffer(this->pFrameScene, 32);
+    av_frame_copy(this->pFrameScene, this->pFrame);
+  }
+
+  int width  = this->pFrame->width;
+  int height = this->pFrame->height;
+  
+  int x, y;
+  int Y,Y_prev,Y_delta;
+
+  double sum = 0;
+  for(x=0;x<width;x++){
+    for(y=0;y<height;y++){
+      Y       = this->pFrameScene->data[0][y * this->pFrameScene->linesize[0] + x];
+      Y_prev  = this->pFrame->data[0][y * this->pFrame->linesize[0] + x];
+      
+      Y_delta = Y-Y_prev;
+      if(Y_delta > 0){
+	sum += Y_delta;
+      }else{
+	sum -= Y_delta;
+      }
+    }
+  }
+
+  double mafd = sum/(width*height);
+  double diff =  fabs(mafd - this->prevSceneScore);
+  result  = av_clipf(FFMIN(mafd, diff) / 100., 0, 1);
+  
+  this->prevSceneScore = result;
+
+  av_frame_copy(this->pFrameScene, this->pFrame);  
+
+  return result;
 }

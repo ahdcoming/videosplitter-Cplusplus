@@ -11,8 +11,6 @@ out_stream::out_stream(enum AVCodecID Id){
   this->stream = NULL;
   this->error  = NULL;
 
-  this->skipped_frames = 0;
-
   //Init the output packet, one will do for both video and audio
   av_init_packet(&(this->packet));
   this->packet.data = NULL;

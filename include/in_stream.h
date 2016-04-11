@@ -54,6 +54,10 @@ class in_stream{
   */
   AVFormatContext * getFormatContext(){ return this->av_format_context; }
 
+  /* skipFrames
+     returns the number of frames skipped
+  */
+  int skippedFrames(){ return this->frames_skipped ; }
 
   /* operator<<
      freand class for printing data about the current frame 

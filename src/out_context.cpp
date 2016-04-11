@@ -16,6 +16,7 @@ out_context::out_context(std::string prefix){
   this->is_open     = 0;
 
   this->error = new errorClass;
+
 }
 
 out_context::~out_context(){
@@ -61,8 +62,13 @@ int out_context::open(){
   IF_VAL_REPORT_ERROR_AND_RETURN(this->av_format_context->oformat == NULL, "Can't find a suitable output format");
 
   //we need the output audio and video stream for the current format (only .wmv for now)
-  this->video = new out_stream_wmv2;
-  this->audio = new out_stream_wmav2;
+  if(!this->video){
+    this->video = new out_stream_wmv2;
+  }
+  
+  if(!this->audio){
+    this->audio = new out_stream_wmav2;
+  }
 
   int ret;
 
@@ -99,8 +105,8 @@ int out_context::close(){
   av_write_trailer(this->av_format_context);
 
   //cleanup
-  delete(this->video);
-  delete(this->audio);
+  //delete(this->video);
+  //delete(this->audio);
 
   if (!(this->av_format_context->oformat->flags & AVFMT_NOFILE)) {
 

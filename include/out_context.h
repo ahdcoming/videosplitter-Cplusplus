@@ -42,12 +42,12 @@ class out_context{
   /* saveAudioFrame 
      the input audio frame gets resampled and saved to the output stream
   */
-  int saveAudioFrame(AVFrame *audioFrame){ return this->audio->saveFrame(audioFrame, this->av_format_context);}
+  int saveAudioFrame(AVFrame *audioFrame, int skippedFrames){ return this->audio->saveFrame(audioFrame, this->av_format_context, skippedFrames);}
 
   /* saveVideoFrame
      the input video frame gets scaled and saved to the output stream
   */
-  int saveVideoFrame(AVFrame *videoFrame){ return this->video->saveFrame(videoFrame, this->av_format_context);}
+  int saveVideoFrame(AVFrame *videoFrame, int skippedFrames){ return this->video->saveFrame(videoFrame, this->av_format_context, skippedFrames);}
 
   /* cur_video_dts 
      return the video dts, tipically is time stamp of the last frame expres in 1/1000 seconds
@@ -79,7 +79,10 @@ class out_context{
   */
   int isSilentFrame(){ if(this->audio->isSilentFrame()){return 1;}else{return 0;}};
 
-
+  /* getAudioVolume 
+     returns the audio volume
+   */
+  int getAudioVolume(){ return this->audio->getVolume();};
 
   // the progressive file counter name
   int    fileCounter;

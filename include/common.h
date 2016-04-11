@@ -2,7 +2,8 @@
 #define COMMON_H
 
 #define DEBUG 1
-#define AUDIO_VIDEO_MAX_DELAY 10
+
+#define AUDIO_VIDEO_MAX_DELAY 1
 #define INTERLEAVED   1 
 
 #include <string>
